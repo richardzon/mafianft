@@ -1,0 +1,72 @@
+{
+  "name": "mafianft",
+  "version": "1.0.0",
+  "description": "Solana-based mafia-themed RPG with DAO governance",
+  "main": "index.js",
+  "scripts": {
+    "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
+    "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check",
+    "test": "anchor test --skip-local-validator",
+    "test:local": "anchor test",
+    "build": "anchor build",
+    "deploy:devnet": "anchor deploy --provider.cluster devnet",
+    "deploy:mainnet": "anchor deploy --provider.cluster mainnet",
+    "clean": "anchor clean",
+    "setup": "npm install && anchor build",
+    "start:backend": "cd backend && npm run start:dev",
+    "start:unity": "echo 'Open Unity project in app/ directory'",
+    "docs:serve": "docsify serve docs",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "solana",
+    "blockchain",
+    "nft",
+    "gaming",
+    "dao",
+    "defi",
+    "web3",
+    "mafia",
+    "rpg"
+  ],
+  "author": "Mafia NFT Team",
+  "license": "MIT",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@coral-xyz/anchor-cli": "^0.29.0",
+    "@metaplex-foundation/js": "^0.20.1",
+    "@metaplex-foundation/mpl-bubblegum": "^1.0.1",
+    "@metaplex-foundation/mpl-token-metadata": "^3.2.1",
+    "@pythnetwork/client": "^2.20.0",
+    "@solana/spl-account-compression": "^0.1.8",
+    "@solana/spl-token": "^0.3.9",
+    "@solana/web3.js": "^1.87.6",
+    "@switchboard-xyz/solana.js": "^2.3.1",
+    "bn.js": "^5.2.1",
+    "bs58": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.5",
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.10.6",
+    "chai": "^4.3.10",
+    "docsify-cli": "^4.4.4",
+    "mocha": "^10.2.0",
+    "prettier": "^3.1.1",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/richardzon/mafianft.git"
+  },
+  "bugs": {
+    "url": "https://github.com/richardzon/mafianft/issues"
+  },
+  "homepage": "https://github.com/richardzon/mafianft#readme"
+}

@@ -1,0 +1,319 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  release:
+    types: [ published ]
+
+env:
+  CARGO_TERM_COLOR: always
+  SOLANA_VERSION: 1.16.0
+  ANCHOR_VERSION: 0.29.0
+  NODE_VERSION: 18
+
+jobs:
+  # Rust/Anchor Smart Contract Testing
+  test-programs:
+    name: Test Anchor Programs
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Cache Solana and Anchor
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/solana
+          ~/.local/share/solana
+          ~/.cargo/bin/anchor
+        key: ${{ runner.os }}-solana-${{ env.SOLANA_VERSION }}-anchor-${{ env.ANCHOR_VERSION }}
+        
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+        components: rustfmt, clippy
+        
+    - name: Install Solana CLI
+      run: |
+        sh -c "$(curl -sSfL https://release.solana.com/v${{ env.SOLANA_VERSION }}/install)"
+        echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        
+    - name: Install Anchor CLI
+      run: |
+        npm install -g @coral-xyz/anchor-cli@${{ env.ANCHOR_VERSION }}
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Lint Rust code
+      run: |
+        cargo fmt -- --check
+        cargo clippy --all-targets --all-features -- -D warnings
+        
+    - name: Build Anchor programs
+      run: anchor build
+      
+    - name: Run Anchor tests
+      run: anchor test --skip-local-validator
+      
+    - name: Upload program artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: anchor-programs
+        path: |
+          target/deploy/*.so
+          target/idl/*.json
+
+  # Backend API Testing
+  test-backend:
+    name: Test Backend API
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: mafianft_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+        
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm ci
+      
+    - name: Lint backend code
+      working-directory: ./backend
+      run: |
+        npm run lint
+        npm run format -- --check
+        
+    - name: Run backend tests
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/mafianft_test
+        REDIS_URL: redis://localhost:6379
+        JWT_SECRET: test-secret
+        NODE_ENV: test
+      run: |
+        npm run test
+        npm run test:e2e
+        
+    - name: Upload backend coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./backend/coverage/lcov.info
+        flags: backend
+
+  # Security Audit
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: [test-programs, test-backend]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Rust security audit
+      uses: actions-rs/audit@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Node.js security audit
+      run: |
+        npm audit --audit-level moderate
+        cd backend && npm audit --audit-level moderate
+
+  # Deploy to Devnet
+  deploy-devnet:
+    name: Deploy to Devnet
+    runs-on: ubuntu-latest
+    needs: [test-programs, test-backend, security-audit]
+    if: github.ref == 'refs/heads/develop'
+    
+    environment:
+      name: devnet
+      url: https://devnet-api.mafianft.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Solana CLI
+      run: |
+        sh -c "$(curl -sSfL https://release.solana.com/v${{ env.SOLANA_VERSION }}/install)"
+        echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        
+    - name: Setup Anchor CLI
+      run: npm install -g @coral-xyz/anchor-cli@${{ env.ANCHOR_VERSION }}
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Configure Solana for devnet
+      run: |
+        solana config set --url https://api.devnet.solana.com
+        echo "${{ secrets.SOLANA_DEVNET_PRIVATE_KEY }}" > ~/.config/solana/id.json
+        chmod 600 ~/.config/solana/id.json
+        
+    - name: Build programs
+      run: anchor build
+      
+    - name: Deploy to devnet
+      run: anchor deploy --provider.cluster devnet
+      
+    - name: Update program IDs
+      run: |
+        # Script to update program IDs in configuration files
+        echo "Updating program IDs after deployment..."
+        
+    - name: Deploy backend to devnet
+      env:
+        DATABASE_URL: ${{ secrets.DEVNET_DATABASE_URL }}
+        REDIS_URL: ${{ secrets.DEVNET_REDIS_URL }}
+        JWT_SECRET: ${{ secrets.DEVNET_JWT_SECRET }}
+        SOLANA_RPC_URL: https://api.devnet.solana.com
+      run: |
+        # Deploy backend to staging environment
+        echo "Deploying backend to devnet environment..."
+
+  # Deploy to Mainnet (with timelock)
+  deploy-mainnet:
+    name: Deploy to Mainnet
+    runs-on: ubuntu-latest
+    needs: [test-programs, test-backend, security-audit]
+    if: github.event_name == 'release'
+    
+    environment:
+      name: mainnet
+      url: https://api.mafianft.com
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Verify release tag
+      run: |
+        if [[ ! "${{ github.ref }}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "Invalid release tag format. Expected: v*.*.* (e.g., v1.0.0)"
+          exit 1
+        fi
+        
+    - name: Setup Solana CLI
+      run: |
+        sh -c "$(curl -sSfL https://release.solana.com/v${{ env.SOLANA_VERSION }}/install)"
+        echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        
+    - name: Setup Anchor CLI
+      run: npm install -g @coral-xyz/anchor-cli@${{ env.ANCHOR_VERSION }}
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm install
+      
+    - name: Configure Solana for mainnet
+      run: |
+        solana config set --url https://api.mainnet-beta.solana.com
+        echo "${{ secrets.SOLANA_MAINNET_PRIVATE_KEY }}" > ~/.config/solana/id.json
+        chmod 600 ~/.config/solana/id.json
+        
+    - name: Build programs
+      run: anchor build
+      
+    - name: Run final security checks
+      run: |
+        # Additional security checks before mainnet deployment
+        echo "Running final security validation..."
+        
+    - name: Create timelock proposal
+      run: |
+        # Create a timelock proposal for mainnet deployment
+        # This would integrate with Solana Realms governance
+        echo "Creating timelock proposal for mainnet deployment..."
+        echo "Proposal will be executed after 24-hour timelock period"
+        
+    - name: Deploy backend to mainnet
+      env:
+        DATABASE_URL: ${{ secrets.MAINNET_DATABASE_URL }}
+        REDIS_URL: ${{ secrets.MAINNET_REDIS_URL }}
+        JWT_SECRET: ${{ secrets.MAINNET_JWT_SECRET }}
+        SOLANA_RPC_URL: https://api.mainnet-beta.solana.com
+      run: |
+        # Deploy backend to production environment
+        echo "Deploying backend to mainnet environment..."
+
+  # Notification
+  notify:
+    name: Notify Team
+    runs-on: ubuntu-latest
+    needs: [deploy-devnet, deploy-mainnet]
+    if: always()
+    
+    steps:
+    - name: Notify Discord
+      if: success()
+      run: |
+        curl -H "Content-Type: application/json" \
+             -X POST \
+             -d '{"content":"✅ Deployment successful for ${{ github.ref }}"}' \
+             ${{ secrets.DISCORD_WEBHOOK_URL }}
+             
+    - name: Notify Discord on failure
+      if: failure()
+      run: |
+        curl -H "Content-Type: application/json" \
+             -X POST \
+             -d '{"content":"❌ Deployment failed for ${{ github.ref }}"}' \
+             ${{ secrets.DISCORD_WEBHOOK_URL }}

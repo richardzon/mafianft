@@ -1,0 +1,26 @@
+[package]
+name = "item-vault"
+version = "0.1.0"
+description = "Item vault for weapons, vehicles and equipment in Mafia NFT"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "item_vault"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true }
+solana-program = { workspace = true }
+spl-token = { workspace = true }
+spl-associated-token-account = { workspace = true }
+arrayref = { workspace = true }
+borsh = { workspace = true }
+solana-security-txt = { workspace = true }

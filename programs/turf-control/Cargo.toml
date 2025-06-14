@@ -1,0 +1,27 @@
+[package]
+name = "turf-control"
+version = "0.1.0"
+description = "Territory control and management for Mafia NFT"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "turf_control"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true }
+solana-program = { workspace = true }
+spl-token = { workspace = true }
+spl-associated-token-account = { workspace = true }
+mpl-token-metadata = { workspace = true }
+arrayref = { workspace = true }
+borsh = { workspace = true }
+solana-security-txt = { workspace = true }

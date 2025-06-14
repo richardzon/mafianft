@@ -1,0 +1,79 @@
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+character_nft = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+item_vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnT"
+turf_control = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnU"
+mob_token = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnV"
+fam_token = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnW"
+game_treasury = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnX"
+
+[programs.devnet]
+character_nft = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+item_vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnT"
+turf_control = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnU"
+mob_token = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnV"
+fam_token = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnW"
+game_treasury = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnX"
+
+[programs.mainnet]
+character_nft = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+item_vault = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnT"
+turf_control = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnU"
+mob_token = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnV"
+fam_token = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnW"
+game_treasury = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnX"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[workspace]
+members = [
+    "programs/character-nft",
+    "programs/item-vault",
+    "programs/turf-control",
+    "programs/mob-token",
+    "programs/fam-token",
+    "programs/game-treasury"
+]
+
+[test]
+startup_wait = 5000
+shutdown_wait = 2000
+upgradeable = true
+
+[[test.genesis]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+program = "tests/fixtures/metaplex_token_metadata.so"
+
+[[test.genesis]]
+address = "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY"
+program = "tests/fixtures/bubblegum.so"
+
+[[test.genesis]]
+address = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV"
+program = "tests/fixtures/noop.so"
+
+[[test.genesis]]
+address = "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK"
+program = "tests/fixtures/account_compression.so"
+
+[test.validator]
+url = "https://api.devnet.solana.com"
+clone = [
+    { address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s" },
+    { address = "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY" },
+    { address = "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV" },
+    { address = "cmtDvXumGCrqC1Age74AVPhSRVXJMd8PJS91L8KbNCK" },
+    { address = "GRoLLzvxpxxu2PGNJMMeZPyMCooCpyPgksTdPGjdhrRE" },
+    { address = "So11111111111111111111111111111111111111112" }
+]
